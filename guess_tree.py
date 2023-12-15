@@ -38,97 +38,77 @@ def YorN(question):
         print("please enter 'yes' or 'no'.")
         return YorN(question)
 
-def saveTree1(tree, treeFile):
-    '''
-    Saves given tree in specified file.
-
-    Parameters
-    ----------
-    tree [List]: the question tree
-    treeFile [txt file]: the txt file with  
-
-    Returns
-    -------
-    none
-    '''
-    text, left, right = tree
-    if left is None and right is None:
-        print('Leaf', file = treeFile)
-        print(text, file = treeFile)
-        
-    else:
-        print('Internal Node', file = treeFile)
-        print(text, file = treeFile)
-        saveTree(left, treeFile)
-        saveTree(right, treeFile)
-
 def saveTree(tree, treeFile):
-    if tree is None:
-        return
+    """
+    Save the tree to a file, differentiating between internal nodes and leaf nodes.
+    """
+    if isinstance(tree, tuple):
+        # Check if the tree node has the correct number of elements
+        if len(tree) == 3:
+            text, left, right = tree
 
-    # Check if it's a leaf node (a guess)
-    if tree[1] is None and tree[2] is None:
-        # Write the guess to the file
-        treeFile.write(f"('{tree[0]}', None, None)\n")
-        return
+            # Check if the node is a leaf node
+            if left is None and right is None:
+                print(f"Leaf: {text}", file=treeFile)
+            else:
+                print(f"Internal Node: {text}", file=treeFile)
+                if left is not None:
+                    saveTree(left, treeFile)
+                if right is not None:
+                    saveTree(right, treeFile)
+        elif len(tree) == 2:
+            # Handle nodes with only 2 elements (possible data inconsistency)
+            text, child = tree
+            print(f"Internal Node: {text}", file=treeFile)
+            if child is not None:
+                saveTree(child, treeFile)
+        else:
+            # Handle nodes with unexpected formats
+            print(f"Unexpected Node Format: {tree}", file=treeFile)
+    else:
+        # Handle leaf nodes or other unexpected formats
+        print(f"Leaf or Unexpected Format: {tree}", file=treeFile)
 
-    # Unpack the tree node with error handling
-    try:
-        text, left, right = tree
-    except ValueError:
-        print("Error: Invalid tree structure")
-        return
-
-    # Write the current node to the file
-    treeFile.write(f"('{text}',\n")
-    saveTree(left, treeFile)
-    saveTree(right, treeFile)
-    treeFile.write("),\n")
 
 
 def loadTree(treeFile):
     '''
-    load the tree from a txt file.
+    Load the tree from a txt file.
 
     Parameters
     ----------
-    treeFile [txt file]: the txt file with  
+    treeFile [txt file]: the txt file
 
     Returns
     -------
     loaded [list]: tree
     '''
-    inputFile = treeFile.readlines()
-    cleanList = [lines.strip('\n') for lines in inputFile]
-    info = []
+    with open(treeFile, 'r') as file:
+        lines = file.readlines()
 
-    for i in range(0, len(cleanList), 2):
-        info.append((cleanList[i], cleanList[i+1]))
-    for i in range(len(info)):
-        if info[i][0] == "Leaf":
-            info[i] = (info[i][1], None, None)
-    
-    isTrue = True
-    while isTrue:
-        popList = []
-        for i in range(len(info)-1, -1, -1):
-            if len(info[i]) == 2 and info[i][0] == 'Internal Node':
-                info[i] = (info[i][1], info[i+1], info[i+2])
-                popList.append(i+1)
-                popList.append(i+2)
-                break
-    
-        for i in reversed(popList):
-            info.pop(i)
-            
-        count = 0
-        for i in range(len(info)):
-            if info[i][0] == 'Internal Node':
-                count += 1
-        
-        if count == 0:
-            isTrue = False
-            
-    loaded = info[0]
-    
-    return loaded
+    # Clean and parse the lines
+    nodes = []
+    for line in lines:
+        if line.startswith("Internal Node:"):
+            text = line.strip().split("Internal Node: ")[1]
+            nodes.append((text, None, None))  # Placeholder for children
+        elif line.startswith("Leaf:"):
+            text = line.strip().split("Leaf: ")[1]
+            nodes.append((text, None, None))  # Leaf node
+
+    # Function to recursively build the tree
+    def build_tree(index=0):
+        if index >= len(nodes):
+            return None
+
+        node = nodes[index]
+        if node[1] is None and node[2] is None:  # If children are not set
+            if lines[index].startswith("Internal Node:"):
+                left_child = build_tree(index * 2 + 1)
+                right_child = build_tree(index * 2 + 2)
+                return (node[0], left_child, right_child)
+            else:
+                # Leaf node
+                return node
+
+    return build_tree()
